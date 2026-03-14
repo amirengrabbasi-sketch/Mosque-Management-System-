@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1B4332">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>MasjidFund — Mosque Fund Management</title>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+
+/* ═══════════ CONFIGURATION ═══════════
+   Edit these in the JS CONFIG block below
+══════════════════════════════════════ */
+
+:root {
+  --primary: #1B4332;
+  --primary-light: #2D6A4F;
+  --primary-dark: #0D2818;
+  --accent: #D4A017;
+  --accent-light: #F0C040;
+  --surface: #FFFFFF;
+  --surface2: #F8FAF9;
+  --surface3: #EEF4F1;
+  --border: #D8E8DF;
+  --text: #0D1B12;
+  --text2: #4A6558;
+  --text3: #8AA898;
+  --red: #C0392B;
+  --blue: #1A56DB;
+  --green-soft: #E8F5EF;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --shadow: 0 2px 16px rgba(27,67,50,0.10);
+  --shadow-lg: 0 8px 32px rgba(27,67,50,0.15);
+  --nav-h: 68px;
+  --header-h: 60px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--surface2);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ──────────── SPLASH / LANDING ──────────── */
+#splash {
+  position: fixed; inset: 0; z-index: 1000;
+  background: linear-gradient(160deg, var(--primary-dark) 0%, var(--primary) 55%, var(--primary-light) 100%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 2rem; text-align: center;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+#splash.hidden { opacity: 0; transform: scale(1.04); pointer-events: none; }
+
+.splash-pattern {
+  position: absolute; inset: 0; opacity: 0.04;
+  background-image: repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%);
+  background-size: 20px 20px;
+}
+.splash-logo {
+  width: 90px; height: 90px; border-radius: 24px;
+  background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 3.2rem; margin-bottom: 1.2rem;
+  animation: popIn 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+  backdrop-filter: blur(10px);
+}
+.splash-arabic {
+  font-family: 'Amiri', serif; font-size: 1.6rem;
+  color: var(--accent-light); margin-bottom: 0.4rem;
+  animation: fadeUp 0.8s ease 0.2s both;
+}
+.splash-title {
+  font-size: 2.2rem; font-weight: 800; color: #fff;
+  letter-spacing: -0.03em; margin-bottom: 0.3rem;
+  animation: fadeUp 0.8s ease 0.3s both;
+}
+.splash-sub {
+  font-size: 0.95rem; color: rgba(255,255,255,0.6);
+  margin-bottom: 2.5rem;
+  animation: fadeUp 0.8s ease 0.4s both;
+}
+.splash-btns {
+  display: flex; flex-direction: column; gap: 0.85rem;
+  width: 100%; max-width: 320px;
+  animation: fadeUp 0.8s ease 0.5s both;
+}
+.splash-btn {
+  padding: 1rem 1.5rem; border-radius: 14px; border: none;
+  font-size: 1rem; font-weight: 700; cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+  transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  letter-spacing: 0.01em;
+}
+.splash-btn:active { transform: scale(0.96); }
+.btn-donate { background: var(--accent); color: var(--primary-dark); font-size: 1.05rem; }
+.btn-admin-entry { background: rgba(255,255,255,0.1); color: #fff; border: 1.5px solid rgba(255,255,255,0.25); backdrop-filter: blur(8px); }
+.splash-version { color: rgba(255,255,255,0.3); font-size: 0.72rem; margin-top: 2rem; animation: fadeUp 1s ease 0.8s both; }
+
+/* ──────────── APP SHELL ──────────── */
+#app-shell { display: none; flex-direction: column; min-height: 100vh; }
+#app-shell.active { display: flex; }
+
+/* ──────────── TOP HEADER ──────────── */
+.app-header {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--primary);
+  height: var(--header-h);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 1rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+}
+.header-left { display: flex; align-items: center; gap: 0.6rem; }
+.header-back {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: rgba(255,255,255,0.12); border: none; cursor: pointer;
+  color: #fff; font-size: 1.1rem; display: flex; align-items: center; justify-content: center;
+}
+.header-title { color: #fff; font-size: 1rem; font-weight: 700; }
+.header-sub { color: rgba(255,255,255,0.6); font-size: 0.72rem; }
+.header-right { display: flex; gap: 0.5rem; }
+.header-btn {
+  padding: 0.4rem 0.9rem; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.1); color: #fff; font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; font-family: 'Outfit', sans-serif;
+  display: flex; align-items: center; gap: 0.35rem;
+  transition: all 0.2s;
+}
+.header-btn:active { background: rgba(255,255,255,0.2); }
+.live-pill {
+  display: flex; align-items: center; gap: 0.35rem;
+  background: rgba(255,255,255,0.1); padding: 0.3rem 0.7rem;
+  border-radius: 99px; font-size: 0.72rem; color: #fff; font-weight: 600;
+}
+.live-dot { width: 7px; height: 7px; background: #4ade80; border-radius: 50%; animation: pulse 1.5s infinite; }
+
+/* ──────────── MAIN CONTENT ──────────── */
+.app-content {
+  flex: 1;
+  padding-bottom: calc(var(--nav-h) + 1rem);
+  overflow-y: auto;
+}
+.page { padding: 1rem; max-width: 520px; margin: 0 auto; }
+.page-wide { padding: 1rem; max-width: 900px; margin: 0 auto; }
+
+/* ──────────── BOTTOM NAV ──────────── */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  height: var(--nav-h);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.nav-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 0.2rem; padding: 0.5rem 0.25rem; cursor: pointer;
+  border: none; background: none; font-family: 'Outfit', sans-serif;
+  transition: all 0.2s;
+}
+.nav-item:active { transform: scale(0.92); }
+.nav-icon { font-size: 1.4rem; line-height: 1; }
+.nav-label { font-size: 0.65rem; font-weight: 600; color: var(--text3); letter-spacing: 0.02em; }
+.nav-item.active .nav-label { color: var(--primary); }
+.nav-dot { width: 5px; height: 5px; background: var(--primary); border-radius: 50%; margin-top: 0.1rem; }
+.nav-badge {
+  position: absolute; top: 6px; right: calc(50% - 20px);
+  background: var(--accent); color: var(--primary-dark);
+  border-radius: 99px; font-size: 0.62rem; font-weight: 800;
+  padding: 0.1rem 0.45rem; min-width: 18px; text-align: center;
+}
+
+/* ──────────── DONOR HERO CARD ──────────── */
+.hero-card {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  border-radius: var(--radius); padding: 1.4rem;
+  margin-bottom: 1rem; position: relative; overflow: hidden;
+}
+.hero-card::after {
+  content: '🕌';
+  position: absolute; right: -10px; bottom: -15px;
+  font-size: 7rem; opacity: 0.08; line-height: 1;
+}
+.hero-card h2 { color: #fff; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.15rem; }
+.hero-card p { color: rgba(255,255,255,0.65); font-size: 0.8rem; }
+.hero-amount { font-size: 2.2rem; font-weight: 800; color: #fff; margin: 0.6rem 0 0.2rem; letter-spacing: -0.03em; }
+.hero-amount span { font-size: 1rem; font-weight: 500; opacity: 0.7; }
+.progress-track { background: rgba(255,255,255,0.2); border-radius: 99px; height: 8px; margin: 0.8rem 0 0.4rem; overflow: hidden; }
+.progress-fill { height: 8px; border-radius: 99px; background: var(--accent); transition: width 1s cubic-bezier(0.4,0,0.2,1); }
+.progress-labels { display: flex; justify-content: space-between; font-size: 0.72rem; color: rgba(255,255,255,0.6); }
+
+/* ──────────── STATS GRID ──────────── */
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1rem; }
+.stat-box {
+  background: var(--surface); border-radius: var(--radius-sm);
+  padding: 0.9rem 0.75rem; text-align: center;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.stat-num { font-size: 1.4rem; font-weight: 800; color: var(--primary); line-height: 1; }
+.stat-lbl { font-size: 0.67rem; color: var(--text3); margin-top: 0.25rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* ──────────── SECTION CARD ──────────── */
+.section-card {
+  background: var(--surface); border-radius: var(--radius);
+  border: 1px solid var(--border); box-shadow: var(--shadow);
+  margin-bottom: 1rem; overflow: hidden;
+}
+.section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 1.1rem; border-bottom: 1px solid var(--border);
+}
+.section-title { font-size: 0.9rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 0.4rem; }
+.section-body { padding: 1.1rem; }
+
+/* ──────────── FORM ELEMENTS ──────────── */
+.form-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.form-field { margin-bottom: 0.9rem; }
+.form-field label {
+  display: block; font-size: 0.78rem; font-weight: 700;
+  color: var(--primary); margin-bottom: 0.35rem; letter-spacing: 0.01em;
+}
+.form-field input,
+.form-field select,
+.form-field textarea {
+  width: 100%; padding: 0.75rem 1rem;
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 0.95rem; outline: none; background: var(--surface);
+  font-family: 'Outfit', sans-serif; color: var(--text);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  -webkit-appearance: none;
+}
+.form-field input:focus,
+.form-field select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(27,67,50,0.12); }
+.form-field input::placeholder { color: var(--text3); }
+.required { color: var(--accent); }
+
+/* ──────────── BUTTONS ──────────── */
+.btn {
+  padding: 0.75rem 1.4rem; border-radius: var(--radius-sm);
+  border: none; cursor: pointer; font-size: 0.9rem; font-weight: 700;
+  font-family: 'Outfit', sans-serif; transition: all 0.2s;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  letter-spacing: 0.01em;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-accent { background: var(--accent); color: var(--primary-dark); }
+.btn-accent:hover { background: var(--accent-light); }
+.btn-ghost { background: var(--surface3); color: var(--text2); border: 1px solid var(--border); }
+.btn-danger { background: #FEE2E2; color: var(--red); }
+.btn-blue { background: #EFF6FF; color: var(--blue); }
+.btn-full { width: 100%; padding: 1rem; font-size: 1rem; border-radius: var(--radius); }
+.btn-sm { padding: 0.38rem 0.8rem; font-size: 0.78rem; border-radius: 6px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ──────────── RECEIPT ──────────── */
+.receipt {
+  background: linear-gradient(135deg, var(--green-soft), #F0F9F5);
+  border: 2px dashed var(--primary-light);
+  border-radius: var(--radius); padding: 1.2rem; margin-top: 1rem;
+}
+.receipt-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.8rem; }
+.receipt-header h4 { font-size: 0.95rem; font-weight: 700; color: var(--primary); }
+.receipt-row { display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; border-bottom: 1px dashed rgba(27,67,50,0.1); font-size: 0.85rem; }
+.receipt-row:last-of-type { border: none; }
+.receipt-row .rl { color: var(--text3); }
+.receipt-row .rr { font-weight: 700; color: var(--text); }
+.receipt-id { font-size: 0.7rem; color: var(--text3); margin-top: 0.6rem; font-family: monospace; }
+
+/* ──────────── LOGIN ──────────── */
+.login-screen {
+  min-height: 100vh; background: var(--surface2);
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 1.5rem;
+}
+.login-card {
+  background: var(--surface); border-radius: 20px;
+  border: 1px solid var(--border); box-shadow: var(--shadow-lg);
+  padding: 2rem; width: 100%; max-width: 400px;
+}
+.login-brand { text-align: center; margin-bottom: 1.8rem; }
+.login-icon { font-size: 3rem; display: block; margin-bottom: 0.5rem; }
+.login-brand h2 { font-size: 1.4rem; font-weight: 800; color: var(--primary); }
+.login-brand p { font-size: 0.82rem; color: var(--text3); margin-top: 0.2rem; }
+
+.otp-grid { display: flex; gap: 0.6rem; justify-content: center; margin: 1rem 0; }
+.otp-grid input {
+  width: 54px; height: 62px; text-align: center;
+  font-size: 1.6rem; font-weight: 800; color: var(--primary);
+  border: 2px solid var(--border); border-radius: 12px; outline: none;
+  font-family: 'Outfit', sans-serif;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.otp-grid input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(27,67,50,0.12); }
+
+.alert { padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.85rem; margin-bottom: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+.alert-green { background: var(--green-soft); color: var(--primary); }
+.alert-red { background: #FEE2E2; color: var(--red); }
+.alert-blue { background: #EFF6FF; color: var(--blue); }
+.alert-gold { background: #FFFBEB; color: #92400E; }
+.link-btn { background: none; border: none; color: var(--primary-light); cursor: pointer; font-size: 0.85rem; font-weight: 700; font-family: 'Outfit', sans-serif; text-decoration: underline; }
+
+/* ──────────── ADMIN TABLE ──────────── */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; font-size: 0.83rem; min-width: 580px; }
+th { background: var(--surface3); color: var(--text2); font-weight: 700; padding: 0.75rem 1rem; text-align: left; border-bottom: 1.5px solid var(--border); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--surface3); color: var(--text); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--green-soft); }
+
+.badge { display: inline-flex; align-items: center; padding: 0.22rem 0.7rem; border-radius: 99px; font-size: 0.72rem; font-weight: 700; }
+.badge-green { background: var(--green-soft); color: #1B5E20; }
+.badge-blue { background: #EFF6FF; color: var(--blue); }
+.badge-gold { background: #FFFBEB; color: #92400E; }
+.badge-red { background: #FEE2E2; color: var(--red); }
+
+.no-records { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1rem; color: var(--text3); gap: 0.5rem; }
+.no-records span { font-size: 2.5rem; }
+
+/* ──────────── TABS ──────────── */
+.tab-scroll { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.2rem; margin-bottom: 1rem; scrollbar-width: none; }
+.tab-scroll::-webkit-scrollbar { display: none; }
+.tab-pill {
+  flex-shrink: 0; padding: 0.5rem 1.1rem; border-radius: 99px;
+  border: 1.5px solid var(--border); background: var(--surface);
+  color: var(--text3); font-size: 0.82rem; font-weight: 700;
+  cursor: pointer; font-family: 'Outfit', sans-serif; white-space: nowrap;
+  transition: all 0.2s;
+}
+.tab-pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* ──────────── ADMIN TOP ──────────── */
+.admin-strip {
+  background: var(--primary); color: #fff;
+  padding: 1rem 1.1rem; margin-bottom: 1rem;
+  border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 0.5rem;
+}
+.admin-strip h3 { font-size: 1rem; font-weight: 700; }
+.admin-strip p { font-size: 0.72rem; opacity: 0.6; }
+.strip-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.strip-btn {
+  padding: 0.42rem 0.9rem; border-radius: 8px; border: none;
+  font-size: 0.78rem; font-weight: 700; cursor: pointer;
+  font-family: 'Outfit', sans-serif; display: flex; align-items: center; gap: 0.3rem;
+  transition: all 0.2s;
+}
+.strip-btn:active { transform: scale(0.96); }
+.sb-green { background: #4ADE80; color: var(--primary-dark); }
+.sb-blue { background: #60A5FA; color: #1E3A8A; }
+.sb-ghost { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+
+/* ──────────── CATEGORY BARS ──────────── */
+.cat-item { margin-bottom: 0.9rem; }
+.cat-label { display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 0.3rem; }
+.cat-label span:first-child { font-weight: 600; color: var(--text); }
+.cat-label span:last-child { color: var(--text3); }
+.cat-bar { background: var(--surface3); border-radius: 99px; height: 8px; overflow: hidden; }
+.cat-fill { height: 8px; border-radius: 99px; background: linear-gradient(90deg, var(--primary), var(--primary-light)); }
+
+/* ──────────── BACKUP ITEMS ──────────── */
+.backup-row { display: flex; align-items: center; justify-content: space-between; padding: 0.9rem; background: var(--surface2); border-radius: var(--radius-sm); border: 1px solid var(--border); margin-bottom: 0.65rem; }
+.backup-row h4 { font-size: 0.88rem; font-weight: 700; }
+.backup-row p { font-size: 0.75rem; color: var(--text3); margin-top: 0.1rem; }
+
+/* ──────────── SETTINGS ──────────── */
+.settings-item { display: flex; align-items: center; justify-content: space-between; padding: 0.9rem 0; border-bottom: 1px solid var(--surface3); }
+.settings-item:last-child { border: none; }
+.settings-item h4 { font-size: 0.88rem; font-weight: 700; }
+.settings-item p { font-size: 0.75rem; color: var(--text3); }
+
+/* ──────────── LOADING ──────────── */
+.loader { display: flex; align-items: center; justify-content: center; gap: 0.6rem; padding: 2.5rem; color: var(--text3); }
+.spin { width: 20px; height: 20px; border: 2.5px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.7s linear infinite; }
+.skeleton { background: linear-gradient(90deg, var(--surface3) 25%, var(--border) 50%, var(--surface3) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 6px; }
+
+/* ──────────── TOAST ──────────── */
+#toast {
+  position: fixed; bottom: calc(var(--nav-h) + 1rem); left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--primary-dark); color: #fff; padding: 0.7rem 1.3rem;
+  border-radius: 99px; font-size: 0.85rem; font-weight: 600;
+  opacity: 0; transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  white-space: nowrap; z-index: 500; pointer-events: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ──────────── ANIMATIONS ──────────── */
+@keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes slideIn { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.animate-in { animation: slideIn 0.4s ease both; }
+
+/* ──────────── DESKTOP OVERRIDES ──────────── */
+@media (min-width: 768px) {
+  :root { --nav-h: 0px; }
+  .bottom-nav { display: none; }
+  #app-shell { flex-direction: row; }
+  .sidebar {
+    width: 240px; flex-shrink: 0;
+    background: var(--primary); min-height: 100vh;
+    display: flex; flex-direction: column;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  .sidebar-brand { padding: 1.5rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand h2 { color: #fff; font-size: 1.2rem; font-weight: 800; }
+  .sidebar-brand p { color: rgba(255,255,255,0.5); font-size: 0.75rem; }
+  .sidebar-nav { padding: 0.8rem 0.6rem; flex: 1; }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 0.7rem;
+    padding: 0.75rem 0.9rem; border-radius: 10px;
+    border: none; background: none; cursor: pointer;
+    font-family: 'Outfit', sans-serif; color: rgba(255,255,255,0.65);
+    font-size: 0.88rem; font-weight: 600; width: 100%; text-align: left;
+    transition: all 0.2s; margin-bottom: 0.2rem;
+  }
+  .sidebar-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .sidebar-item.active { background: rgba(255,255,255,0.15); color: #fff; }
+  .sidebar-icon { font-size: 1.1rem; width: 22px; text-align: center; }
+  .sidebar-footer { padding: 1rem 0.6rem; border-top: 1px solid rgba(255,255,255,0.1); }
+  .app-content { flex: 1; padding-bottom: 0; }
+  .app-header { display: none; }
+  .page, .page-wide { padding: 1.5rem 2rem; }
+  .page { max-width: 600px; }
+  .form-grid2 { grid-template-columns: 1fr 1fr; }
+  .stats-row { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (max-width: 380px) {
+  .otp-grid input { width: 46px; height: 54px; font-size: 1.4rem; }
+  .stats-row { grid-template-columns: repeat(3,1fr); gap: 0.5rem; }
+  .stat-num { font-size: 1.1rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- SPLASH SCREEN -->
+<div id="splash">
+  <div class="splash-pattern"></div>
+  <div class="splash-logo">🕌</div>
+  <div class="splash-arabic">بسم الله الرحمن الرحيم</div>
+  <div class="splash-title">MasjidFund</div>
+  <div class="splash-sub">Transparent Fund Management for Your Masjid</div>
+  <div class="splash-btns">
+    <button class="splash-btn btn-donate" onclick="enterDonor()">💰 Donate to Masjid</button>
+    <button class="splash-btn btn-admin-entry" onclick="enterAdmin()">🔐 Committee Login</button>
+  </div>
+  <div class="splash-version" id="demoNote"></div>
+</div>
+
+<!-- APP SHELL (Donor) -->
+<div id="donor-app" style="display:none; min-height:100vh;">
+  <!-- Mobile Header -->
+  <div class="app-header" id="donor-header">
+    <div class="header-left">
+      <button class="header-back" onclick="backToSplash()">←</button>
+      <div>
+        <div class="header-title" id="dh-title">MasjidFund</div>
+        <div class="header-sub">Donor Portal</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="live-pill"><div class="live-dot"></div>Live</div>
+    </div>
+  </div>
+  <div class="app-content">
+    <div class="page" id="donor-page"></div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="donorNav('home')" id="dn-home">
+      <div class="nav-icon">🏠</div>
+      <div class="nav-label">Home</div>
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-item" onclick="donorNav('donate')" id="dn-donate">
+      <div class="nav-icon">💰</div>
+      <div class="nav-label">Donate</div>
+    </button>
+    <button class="nav-item" onclick="donorNav('receipt')" id="dn-receipt">
+      <div class="nav-icon">🧾</div>
+      <div class="nav-label">Receipt</div>
+    </button>
+  </nav>
+</div>
+
+<!-- ADMIN LOGIN -->
+<div id="admin-login" style="display:none;">
+  <div class="login-screen">
+    <button class="link-btn" style="margin-bottom:1rem" onclick="backToSplash()">← Back to Home</button>
+    <div class="login-card" id="login-card"></div>
+  </div>
+</div>
+
+<!-- ADMIN APP -->
+<div id="admin-app" id="app-shell" style="display:none; min-height:100vh; flex-direction:row;">
+  <!-- Desktop Sidebar -->
+  <aside class="sidebar" id="admin-sidebar">
+    <div class="sidebar-brand">
+      <h2>🕌 MasjidFund</h2>
+      <p id="sb-mosque-name">Committee Panel</p>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="sidebar-item active" onclick="adminNav('overview')" id="sn-overview"><span class="sidebar-icon">📊</span>Overview</button>
+      <button class="sidebar-item" onclick="adminNav('donations')" id="sn-donations"><span class="sidebar-icon">💰</span>Donations</button>
+      <button class="sidebar-item" onclick="adminNav('categories')" id="sn-categories"><span class="sidebar-icon">📁</span>Categories</button>
+      <button class="sidebar-item" onclick="adminNav('backup')" id="sn-backup"><span class="sidebar-icon">💾</span>Export</button>
+      <button class="sidebar-item" onclick="adminNav('settings')" id="sn-settings"><span class="sidebar-icon">⚙️</span>Settings</button>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="sidebar-item" onclick="backToSplash()" style="color:rgba(255,255,255,0.5)"><span class="sidebar-icon">🚪</span>Logout</button>
+    </div>
+  </aside>
+
+  <!-- Mobile Header for Admin -->
+  <div style="display:flex;flex-direction:column;flex:1;">
+    <div class="app-header">
+      <div class="header-left">
+        <div>
+          <div class="header-title">Admin Panel</div>
+          <div class="header-sub" id="admin-sub">Committee Dashboard</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="header-btn" onclick="loadAdminData()">🔄</button>
+        <button class="header-btn" onclick="exportExcel()">⬇</button>
+        <button class="header-btn" onclick="backToSplash()">Exit</button>
+      </div>
+    </div>
+    <div class="app-content">
+      <div class="page-wide" id="admin-page"></div>
+    </div>
+    <nav class="bottom-nav">
+      <button class="nav-item active" onclick="adminNav('overview')" id="an-overview"><div class="nav-icon">📊</div><div class="nav-label">Overview</div><div class="nav-dot"></div></button>
+      <button class="nav-item" onclick="adminNav('donations')" id="an-donations"><div class="nav-icon" style="position:relative">💰<span class="nav-badge" id="don-badge" style="display:none">0</span></div><div class="nav-label">Donations</div></button>
+      <button class="nav-item" onclick="adminNav('categories')" id="an-categories"><div class="nav-icon">📁</div><div class="nav-label">Categories</div></button>
+      <button class="nav-item" onclick="adminNav('backup')" id="an-backup"><div class="nav-icon">💾</div><div class="nav-label">Export</div></button>
+      <button class="nav-item" onclick="adminNav('settings')" id="an-settings"><div class="nav-icon">⚙️</div><div class="nav-label">Settings</div></button>
+    </nav>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════
+   ⚙ CONFIG — EDIT BEFORE GOING LIVE
+═══════════════════════════════════════ */
+const CFG = {
+  MOSQUE_NAME: "Al-Noor Masjid",
+  ADMIN_EMAIL: "admin@masjid.org",
+  ADMIN_PASSWORD: "admin123",
+  GOOGLE_SCRIPT_URL: "", // Paste your Apps Script Web App URL here
+  DEMO_MODE: true        // Set false after connecting Google Sheets
+};
+/* ════════════════════════════════════ */
+
+// ── STATE ──
+let S = {
+  screen: 'splash',
+  donorTab: 'home',
+  adminTab: 'overview',
+  loginStep: 'creds', // creds | otp | reset
+  loginMsg: '', loginMsgType: 'green',
+  donations: [],
+  stats: { total: 0, count: 0, categories: {}, targetAmount: 500000, currency: 'PKR' },
+  lastReceipt: null,
+  searchQ: '',
+  loading: false,
+  settings: { targetAmount: 500000, currency: 'PKR', mosqueName: CFG.MOSQUE_NAME }
+};
+
+// ── DEMO LOCAL DATA ──
+let demoRows = JSON.parse(localStorage.getItem('mf2_rows') || '[]');
+let demoSettings = JSON.parse(localStorage.getItem('mf2_cfg') || JSON.stringify({ targetAmount: 500000, currency: 'PKR' }));
+const DEMO_OTP = '8842';
+
+function saveDemoData() {
+  localStorage.setItem('mf2_rows', JSON.stringify(demoRows));
+  localStorage.setItem('mf2_cfg', JSON.stringify(demoSettings));
+}
+
+// ── API LAYER ──
+async function api(action, payload = {}) {
+  if (CFG.DEMO_MODE || !CFG.GOOGLE_SCRIPT_URL) return demoAPI(action, payload);
+  try {
+    const r = await fetch(CFG.GOOGLE_SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...payload })
+    });
+    return r.json();
+  } catch(e) {
+    return { success: false, message: 'Network error. Running in offline mode.' };
+  }
+}
+
+function uid() { return 'D' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substr(2,3).toUpperCase(); }
+function today() { return new Date().toLocaleDateString('en-PK', { year:'numeric', month:'short', day:'numeric' }); }
+function fmt(n) { return Number(n||0).toLocaleString('en-PK'); }
+
+function demoAPI(action, p) {
+  if (action === 'submitDonation') {
+    const id = uid();
+    const rec = { id, name: p.name, phone: p.phone, email: p.email||'', cnic: p.cnic||'', amount: Number(p.amount), category: p.category, payment: p.payment, message: p.message||'', date: today(), timestamp: new Date().toISOString() };
+    demoRows.unshift(rec);
+    saveDemoData();
+    return { success: true, id, date: today() };
+  }
+  if (action === 'getDonations') return { success: true, donations: demoRows };
+  if (action === 'deleteDonation') { demoRows = demoRows.filter(d => d.id !== p.id); saveDemoData(); return { success: true }; }
+  if (action === 'getStats') {
+    const total = demoRows.reduce((s,d) => s+Number(d.amount), 0);
+    const cats = {};
+    demoRows.forEach(d => { cats[d.category] = (cats[d.category]||0)+Number(d.amount); });
+    return { success: true, total, count: demoRows.length, categories: cats, ...demoSettings };
+  }
+  if (action === 'updateSettings') { Object.assign(demoSettings, p); saveDemoData(); return { success: true }; }
+  if (action === 'sendOTP') {
+    if (p.email === CFG.ADMIN_EMAIL && p.password === CFG.ADMIN_PASSWORD)
+      return { success: true, message: `Demo OTP: ${DEMO_OTP}` };
+    return { success: false, message: 'Invalid email or password.' };
+  }
+  if (action === 'verifyOTP') {
+    if (p.otp === DEMO_OTP) return { success: true };
+    return { success: false, message: `Wrong OTP. Demo OTP is ${DEMO_OTP}` };
+  }
+  if (action === 'sendReset') {
+    if (p.email === CFG.ADMIN_EMAIL) return { success: true, message: 'Password reset link sent (demo mode).' };
+    return { success: false, message: 'Email not found.' };
+  }
+}
+
+// ── TOAST ──
+function toast(msg, dur = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+// ── NAVIGATION ──
+function showOnly(id) {
+  ['splash','donor-app','admin-login','admin-app'].forEach(s => {
+    const el = document.getElementById(s);
+    if (el) el.style.display = (s === id) ? (id === 'admin-app' ? 'flex' : 'block') : 'none';
+  });
+}
+
+function backToSplash() { showOnly('splash'); }
+
+function enterDonor() {
+  showOnly('donor-app');
+  loadStats().then(() => renderDonorPage());
+}
+
+function enterAdmin() {
+  showOnly('admin-login');
+  S.loginStep = 'creds'; S.loginMsg = '';
+  renderLoginCard();
+}
+
+// ── DONOR NAV ──
+function donorNav(tab) {
+  S.donorTab = tab;
+  ['home','donate','receipt'].forEach(t => {
+    const el = document.getElementById('dn-'+t);
+    if (el) {
+      el.classList.toggle('active', t===tab);
+      const dot = el.querySelector('.nav-dot');
+      if (dot) dot.style.display = t===tab ? 'block' : 'none';
+    }
+  });
+  renderDonorPage();
+}
+
+function renderDonorPage() {
+  const el = document.getElementById('donor-page');
+  if (!el) return;
+  if (S.donorTab === 'home') el.innerHTML = renderDonorHome();
+  else if (S.donorTab === 'donate') el.innerHTML = renderDonorForm();
+  else if (S.donorTab === 'receipt') el.innerHTML = renderDonorReceipt();
+  el.classList.add('animate-in');
+}
+
+function renderDonorHome() {
+  const st = S.stats;
+  const pct = st.targetAmount > 0 ? Math.min(100, Math.round((st.total/st.targetAmount)*100)) : 0;
+  const todayTotal = S.donations.filter(d=>d.date===today()).reduce((s,d)=>s+Number(d.amount),0);
+  return `
+  <div class="hero-card">
+    <p style="color:rgba(255,255,255,0.6);font-size:0.78rem;margin-bottom:0.3rem">Fund Collection</p>
+    <h2>${st.currency} ${fmt(st.total)}</h2>
+    <div class="hero-amount"><span style="font-size:0.8rem;opacity:0.6">Target </span>${fmt(st.targetAmount)} <span>${st.currency}</span></div>
+    <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+    <div class="progress-labels"><span>${pct}% reached</span><span>${fmt(Math.max(0,st.targetAmount-st.total))} remaining</span></div>
+  </div>
+  <div class="stats-row">
+    <div class="stat-box"><div class="stat-num">${st.count}</div><div class="stat-lbl">Donors</div></div>
+    <div class="stat-box"><div class="stat-num">${fmt(todayTotal)||0}</div><div class="stat-lbl">Today</div></div>
+    <div class="stat-box"><div class="stat-num">${pct}%</div><div class="stat-lbl">Goal</div></div>
+  </div>
+  <div class="section-card">
+    <div class="section-head"><span class="section-title">📁 By Category</span></div>
+    <div class="section-body">
+      ${Object.entries(st.categories).length === 0 ? `<div style="color:var(--text3);font-size:0.85rem;text-align:center;padding:0.5rem">No donations yet</div>` :
+        Object.entries(st.categories).sort((a,b)=>b[1]-a[1]).map(([cat,amt]) => `
+        <div class="cat-item">
+          <div class="cat-label"><span>${cat}</span><span>${fmt(amt)} ${st.currency}</span></div>
+          <div class="cat-bar"><div class="cat-fill" style="width:${st.total>0?Math.round((amt/st.total)*100):0}%"></div></div>
+        </div>`).join('')}
+    </div>
+  </div>
+  <button class="btn btn-primary btn-full" onclick="donorNav('donate')" style="margin-top:0.5rem">+ Make a Donation</button>`;
+}
+
+function renderDonorForm() {
+  const st = S.stats;
+  return `
+  <div class="section-card">
+    <div class="section-head"><span class="section-title">📝 Submit Donation</span></div>
+    <div class="section-body">
+      <div style="font-family:'Amiri',serif;text-align:center;color:var(--text3);font-size:1rem;margin-bottom:1rem">وَمَا تُنفِقُوا مِن خَيْرٍ فَإِنَّ اللَّهَ بِهِ عَلِيمٌ</div>
+      <div class="form-grid2">
+        <div class="form-field"><label>Full Name <span class="required">*</span></label><input id="dname" placeholder="Muhammad Ali" /></div>
+        <div class="form-field"><label>Phone <span class="required">*</span></label><input id="dphone" placeholder="03XX-XXXXXXX" type="tel" /></div>
+      </div>
+      <div class="form-grid2">
+        <div class="form-field"><label>Email</label><input id="demail" type="email" placeholder="optional" /></div>
+        <div class="form-field"><label>CNIC</label><input id="dcnic" placeholder="optional" /></div>
+      </div>
+      <div class="form-grid2">
+        <div class="form-field"><label>Amount (${st.currency}) <span class="required">*</span></label><input id="damount" type="number" placeholder="5000" inputmode="numeric" /></div>
+        <div class="form-field"><label>Category</label><select id="dcat">
+          <option>Construction</option><option>Electricity</option><option>Water & Utilities</option>
+          <option>Education</option><option>General Fund</option><option>Ramadan</option>
+          <option>Eid</option><option>Emergency</option><option>Other</option>
+        </select></div>
+      </div>
+      <div class="form-field"><label>Payment Method</label><select id="dpay">
+        <option>Cash</option><option>Bank Transfer</option><option>JazzCash</option>
+        <option>EasyPaisa</option><option>Cheque</option>
+      </select></div>
+      <div class="form-field"><label>Message (optional)</label><input id="dmsg" placeholder="Any message..." /></div>
+      <div id="form-msg"></div>
+      <button class="btn btn-primary btn-full" id="submit-btn" onclick="submitDonation()">🤲 Submit Donation — JazakAllah</button>
+    </div>
+  </div>`;
+}
+
+function renderDonorReceipt() {
+  const rec = S.lastReceipt;
+  const st = S.stats;
+  if (!rec) return `
+  <div class="no-records" style="padding:4rem 1rem">
+    <span>🧾</span>
+    <p style="font-weight:700;color:var(--text2)">No receipt yet</p>
+    <p style="font-size:0.82rem;color:var(--text3)">Submit a donation to generate a receipt</p>
+    <button class="btn btn-primary" style="margin-top:1rem" onclick="donorNav('donate')">Donate Now</button>
+  </div>`;
+  return `
+  <div class="section-card">
+    <div class="section-head"><span class="section-title">🧾 Donation Receipt</span><button class="btn btn-ghost btn-sm" onclick="printReceipt()">🖨 Print</button></div>
+    <div class="section-body">
+      <div style="text-align:center;padding:0.5rem 0 1rem">
+        <div style="font-size:3rem">✅</div>
+        <div style="font-weight:800;font-size:1.1rem;color:var(--primary);margin-top:0.3rem">JazakAllah Khair!</div>
+        <div style="font-size:0.82rem;color:var(--text3)">Your donation has been recorded</div>
+      </div>
+      <div class="receipt">
+        <div class="receipt-header"><span style="font-size:1.2rem">🕌</span><h4>${CFG.MOSQUE_NAME}</h4></div>
+        <div class="receipt-row"><span class="rl">Receipt ID</span><span class="rr" style="font-family:monospace;font-size:0.82rem">${rec.id}</span></div>
+        <div class="receipt-row"><span class="rl">Donor</span><span class="rr">${rec.name}</span></div>
+        <div class="receipt-row"><span class="rl">Amount</span><span class="rr" style="color:var(--primary);font-size:1rem">${fmt(rec.amount)} ${st.currency}</span></div>
+        <div class="receipt-row"><span class="rl">Category</span><span class="rr">${rec.category}</span></div>
+        <div class="receipt-row"><span class="rl">Payment</span><span class="rr">${rec.payment}</span></div>
+        <div class="receipt-row"><span class="rl">Date</span><span class="rr">${rec.date}</span></div>
+        ${rec.message ? `<div class="receipt-row"><span class="rl">Message</span><span class="rr">${rec.message}</span></div>` : ''}
+        <div class="receipt-id">May Allah accept your donation and bless you. Ameen 🤲</div>
+      </div>
+      <button class="btn btn-ghost btn-full" style="margin-top:0.75rem" onclick="donorNav('home')">← Back to Home</button>
+    </div>
+  </div>`;
+}
+
+// ── ADMIN NAV ──
+function adminNav(tab) {
+  S.adminTab = tab;
+  // Sidebar
+  ['overview','donations','categories','backup','settings'].forEach(t => {
+    const s = document.getElementById('sn-'+t);
+    const a = document.getElementById('an-'+t);
+    if (s) s.classList.toggle('active', t===tab);
+    if (a) {
+      a.classList.toggle('active', t===tab);
+      const dot = a.querySelector('.nav-dot');
+      if (dot) dot.style.display = t===tab ? 'block' : 'none';
+    }
+  });
+  renderAdminPage();
+}
+
+function renderAdminPage() {
+  const el = document.getElementById('admin-page');
+  if (!el) return;
+  if (S.adminTab === 'overview') el.innerHTML = renderAdminOverview();
+  else if (S.adminTab === 'donations') el.innerHTML = renderAdminDonations();
+  else if (S.adminTab === 'categories') el.innerHTML = renderAdminCategories();
+  else if (S.adminTab === 'backup') el.innerHTML = renderAdminBackup();
+  else if (S.adminTab === 'settings') el.innerHTML = renderAdminSettings();
+  el.classList.add('animate-in');
+}
+
+function renderAdminOverview() {
+  const st = S.stats;
+  const pct = st.targetAmount > 0 ? Math.min(100, Math.round((st.total/st.targetAmount)*100)) : 0;
+  const todayTotal = S.donations.filter(d=>d.date===today()).reduce((s,d)=>s+Number(d.amount),0);
+  const topCat = Object.entries(st.categories||{}).sort((a,b)=>b[1]-a[1])[0];
+  return `
+  <div class="admin-strip">
+    <div><h3>📊 Overview</h3><p>${today()} · ${CFG.DEMO_MODE?'Demo Mode':'Google Sheets Connected ✅'}</p></div>
+    <div class="strip-btns">
+      <button class="strip-btn sb-green" onclick="exportExcel()">⬇ Excel</button>
+      <button class="strip-btn sb-blue" onclick="printAll()">🖨 Print</button>
+      <button class="strip-btn sb-ghost" onclick="loadAdminData()">🔄 Sync</button>
+    </div>
+  </div>
+  <div class="stats-row" style="grid-template-columns:repeat(2,1fr);gap:0.75rem;margin-bottom:0.75rem">
+    <div class="stat-box" style="text-align:left;padding:1rem">
+      <div style="font-size:0.72rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Total Collected</div>
+      <div style="font-size:1.8rem;font-weight:800;color:var(--primary);margin-top:0.3rem">${fmt(st.total)}</div>
+      <div style="font-size:0.78rem;color:var(--text3)">${st.currency}</div>
+    </div>
+    <div class="stat-box" style="text-align:left;padding:1rem">
+      <div style="font-size:0.72rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Donors</div>
+      <div style="font-size:1.8rem;font-weight:800;color:var(--primary);margin-top:0.3rem">${st.count}</div>
+      <div style="font-size:0.78rem;color:var(--text3)">total records</div>
+    </div>
+  </div>
+  <div class="stats-row" style="grid-template-columns:repeat(2,1fr);gap:0.75rem;margin-bottom:1rem">
+    <div class="stat-box" style="text-align:left;padding:1rem">
+      <div style="font-size:0.72rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Today</div>
+      <div style="font-size:1.8rem;font-weight:800;color:var(--primary-light);margin-top:0.3rem">${fmt(todayTotal)}</div>
+      <div style="font-size:0.78rem;color:var(--text3)">${st.currency}</div>
+    </div>
+    <div class="stat-box" style="text-align:left;padding:1rem">
+      <div style="font-size:0.72rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Top Category</div>
+      <div style="font-size:1.1rem;font-weight:800;color:var(--primary);margin-top:0.3rem">${topCat?topCat[0]:'—'}</div>
+      <div style="font-size:0.78rem;color:var(--text3)">${topCat?fmt(topCat[1])+' '+st.currency:''}</div>
+    </div>
+  </div>
+  <div class="section-card">
+    <div class="section-head"><span class="section-title">📈 Fund Progress</span><span style="font-size:0.82rem;color:var(--text3);font-weight:600">${pct}%</span></div>
+    <div class="section-body">
+      <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:var(--text3);margin-bottom:0.4rem">
+        <span>Collected: <strong style="color:var(--primary)">${fmt(st.total)} ${st.currency}</strong></span>
+        <span>Target: <strong>${fmt(st.targetAmount)} ${st.currency}</strong></span>
+      </div>
+      <div class="progress-track" style="height:12px"><div class="progress-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--primary),var(--accent))"></div></div>
+      <div style="font-size:0.78rem;color:var(--text3);margin-top:0.4rem">Remaining: ${fmt(Math.max(0,st.targetAmount-st.total))} ${st.currency}</div>
+    </div>
+  </div>
+  <div class="section-card">
+    <div class="section-head"><span class="section-title">🕐 Recent Donations</span><button class="btn btn-ghost btn-sm" onclick="adminNav('donations')">View All</button></div>
+    <div class="table-wrap">
+      ${S.donations.slice(0,5).length===0?`<div class="no-records"><span>📭</span><p>No donations yet</p></div>`:`
+      <table>
+        <thead><tr><th>Name</th><th>Amount</th><th>Category</th><th>Date</th></tr></thead>
+        <tbody>${S.donations.slice(0,5).map(d=>`<tr>
+          <td><strong>${d.name}</strong><br><span style="color:var(--text3);font-size:0.75rem">${d.phone}</span></td>
+          <td><strong>${fmt(d.amount)}</strong> <span style="color:var(--text3);font-size:0.75rem">${S.stats.currency}</span></td>
+          <td><span class="badge badge-green">${d.category}</span></td>
+          <td style="color:var(--text3)">${d.date}</td>
+        </tr>`).join('')}</tbody>
+      </table>`}
+    </div>
+  </div>`;
+}
+
+function renderAdminDonations() {
+  const q = S.searchQ.toLowerCase();
+  const filtered = S.donations.filter(d =>
+    (d.name||'').toLowerCase().includes(q) || (d.phone||'').includes(q) ||
+    (d.category||'').toLowerCase().includes(q) || (d.id||'').toLowerCase().includes(q)
+  );
+  return `
+  <div class="section-card">
+    <div class="section-head">
+      <span class="section-title">💰 All Donations (${S.donations.length})</span>
+      <button class="btn btn-primary btn-sm" onclick="exportExcel()">⬇ Excel</button>
+    </div>
+    <div style="padding:0.75rem 1rem;border-bottom:1px solid var(--border)">
+      <input style="width:100%;padding:0.6rem 1rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:0.9rem;outline:none;font-family:Outfit,sans-serif"
+        placeholder="🔍 Search name, phone, ID..."
+        value="${S.searchQ}"
+        oninput="S.searchQ=this.value;renderAdminPage()" />
+    </div>
+    ${S.loading ? `<div class="loader"><div class="spin"></div>Loading...</div>` :
+    filtered.length===0 ? `<div class="no-records"><span>📭</span><p>No records found</p></div>` :
+    `<div class="table-wrap"><table>
+      <thead><tr><th>Receipt ID</th><th>Name</th><th>Phone</th><th>Amount</th><th>Category</th><th>Payment</th><th>Date</th><th></th></tr></thead>
+      <tbody>${filtered.map(d=>`<tr>
+        <td style="font-family:monospace;font-size:0.75rem;color:var(--text3)">${d.id}</td>
+        <td><strong>${d.name}</strong>${d.email?`<br><span style='font-size:0.72rem;color:var(--text3)'>${d.email}</span>`:''}</td>
+        <td>${d.phone}</td>
+        <td><strong>${fmt(d.amount)}</strong></td>
+        <td><span class="badge badge-blue">${d.category}</span></td>
+        <td><span class="badge badge-green">${d.payment}</span></td>
+        <td style="color:var(--text3);font-size:0.82rem">${d.date}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteDonation('${d.id}')">✕</button></td>
+      </tr>`).join('')}</tbody>
+    </table></div>`}
+  </div>`;
+}
+
+function renderAdminCategories() {
+  const cats = S.stats.categories || {};
+  const total = S.stats.total || 0;
+  const entries = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  return `
+  <div class="section-card">
+    <div class="section-head"><span class="section-title">📁 Category Breakdown</span></div>
+    <div class="section-body">
+      ${entries.length===0 ? `<div style="color:var(--text3);text-align:center;padding:1rem">No data yet</div>` :
+      entries.map(([cat,amt])=>`
+      <div class="cat-item">
+        <div class="cat-label">
+          <span>${cat} <span style="color:var(--text3);font-size:0.75rem">(${S.donations.filter(d=>d.category===cat).length} donors)</span></span>
+          <span><strong>${fmt(amt)}</strong> ${S.stats.currency} · ${total>0?Math.round((amt/total)*100):0}%</span>
+        </div>
+        <div class="cat-bar"><div class="cat-fill" style="width:${total>0?Math.round((amt/total)*100):0}%"></div></div>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div class="section-card">
+    <div class="section-head"><span class="section-title">📊 Summary Table</span></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Category</th><th>Total</th><th>Donors</th><th>Share</th></tr></thead>
+      <tbody>${entries.map(([cat,amt])=>`<tr>
+        <td><strong>${cat}</strong></td>
+        <td><strong>${fmt(amt)} ${S.stats.currency}</strong></td>
+        <td>${S.donations.filter(d=>d.category===cat).length}</td>
+        <td>${total>0?Math.round((amt/total)*100):0}%</td>
+      </tr>`).join('')}
+      </tbody>
+      <tfoot><tr><td style="font-weight:700">Total</td><td style="font-weight:700">${fmt(total)} ${S.stats.currency}</td><td>${S.stats.count}</td><td>100%</td></tr></tfoot>
+    </table></div>
+  </div>`;
+}
+
+function renderAdminBackup() {
+  return `
+  <div class="section-card">
+    <div class="section-head"><span class="section-title">💾 Export & Backup</span></div>
+    <div class="section-body">
+      <div class="backup-row"><div><h4>📊 Export Excel (.xlsx)</h4><p>Download all donations as Microsoft Excel file</p></div><button class="btn btn-primary btn-sm" onclick="exportExcel()">Download</button></div>
+      <div class="backup-row"><div><h4>📋 Export CSV</h4><p>Compatible with Google Sheets & Numbers</p></div><button class="btn btn-blue btn-sm" onclick="exportCSV()">Download</button></div>
+      <div class="backup-row"><div><h4>🖨 Print Full Report</h4><p>Formatted printable donor report</p></div><button class="btn btn-ghost btn-sm" onclick="printAll()">Print</button></div>
+      <div class="backup-row" style="border-color:#FECACA;background:#FFF5F5"><div><h4 style="color:var(--red)">🗑 Clear All Records</h4><p style="color:var(--red)">Permanently delete all data</p></div><button class="btn btn-danger btn-sm" onclick="clearAll()">Delete All</button></div>
+    </div>
+  </div>`;
+}
+
+function renderAdminSettings() {
+  const st = S.stats;
+  return `
+  <div class="section-card">
+    <div class="section-head"><span class="section-title">⚙️ Settings</span></div>
+    <div class="section-body">
+      <div class="form-field"><label>Mosque Name</label><input id="set-name" value="${CFG.MOSQUE_NAME}" /></div>
+      <div class="form-grid2">
+        <div class="form-field"><label>Target Amount</label><input id="set-target" type="number" value="${st.targetAmount}" /></div>
+        <div class="form-field"><label>Currency</label><select id="set-curr">
+          <option ${st.currency==='PKR'?'selected':''}>PKR</option>
+          <option ${st.currency==='USD'?'selected':''}>USD</option>
+          <option ${st.currency==='SAR'?'selected':''}>SAR</option>
+          <option ${st.currency==='GBP'?'selected':''}>GBP</option>
+          <option ${st.currency==='AED'?'selected':''}>AED</option>
+        </select></div>
+      </div>
+      <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+  <div class="section-card">
+    <div class="section-head"><span class="section-title">🔗 Google Sheets Integration</span></div>
+    <div class="section-body">
+      <div class="alert ${CFG.DEMO_MODE?'alert-gold':'alert-green'}">${CFG.DEMO_MODE?'⚠️ Running in Demo Mode — data saves locally':'✅ Connected to Google Sheets'}</div>
+      <div class="form-field"><label>Google Apps Script URL</label><input id="set-url" value="${CFG.GOOGLE_SCRIPT_URL}" placeholder="https://script.google.com/macros/s/.../exec" /></div>
+      <div class="form-field"><label>Admin Email</label><input id="set-email" value="${CFG.ADMIN_EMAIL}" /></div>
+      <button class="btn btn-primary" onclick="saveGoogleSettings()">Connect Google Sheets</button>
+    </div>
+  </div>`;
+}
+
+// ── LOGIN ──
+function renderLoginCard() {
+  const el = document.getElementById('login-card');
+  if (!el) return;
+  const step = S.loginStep;
+  const msg = S.loginMsg;
+  const type = S.loginMsgType;
+  el.innerHTML = `
+    <div class="login-brand">
+      <span class="login-icon">🕌</span>
+      <h2>Committee Login</h2>
+      <p>${CFG.MOSQUE_NAME}</p>
+    </div>
+    ${msg?`<div class="alert alert-${type}">${msg}</div>`:''}
+    ${step==='creds'?`
+      <div class="form-field"><label>Admin Email</label><input id="ae" type="email" value="${CFG.ADMIN_EMAIL}" /></div>
+      <div class="form-field"><label>Password</label><input id="ap" type="password" placeholder="Enter password" /></div>
+      <button class="btn btn-primary btn-full" id="login-btn" onclick="doLogin()">Send OTP to Email →</button>
+      <div style="text-align:center;margin-top:1rem"><button class="link-btn" onclick="S.loginStep='reset';S.loginMsg='';renderLoginCard()">Forgot Password?</button></div>
+    `:step==='otp'?`
+      <p style="text-align:center;font-size:0.82rem;color:var(--text3);margin-bottom:0.5rem">Enter the 4-digit OTP sent to your email</p>
+      ${CFG.DEMO_MODE?`<div class="alert alert-gold">Demo OTP: <strong style="font-size:1.3rem;color:var(--primary-dark)">${DEMO_OTP}</strong></div>`:''}
+      <div class="otp-grid">
+        <input type="text" inputmode="numeric" maxlength="1" id="o0" oninput="otpNext(0)" onkeydown="otpKey(event,0)" />
+        <input type="text" inputmode="numeric" maxlength="1" id="o1" oninput="otpNext(1)" onkeydown="otpKey(event,1)" />
+        <input type="text" inputmode="numeric" maxlength="1" id="o2" oninput="otpNext(2)" onkeydown="otpKey(event,2)" />
+        <input type="text" inputmode="numeric" maxlength="1" id="o3" oninput="otpNext(3)" onkeydown="otpKey(event,3)" />
+      </div>
+      <button class="btn btn-primary btn-full" onclick="verifyOTP()">Verify & Enter</button>
+      <div style="text-align:center;margin-top:0.8rem;font-size:0.82rem;color:var(--text3)">
+        No email? <button class="link-btn" onclick="resendOTP()">Resend OTP</button>
+      </div>
+      <div style="text-align:center;margin-top:0.4rem"><button class="link-btn" onclick="S.loginStep='creds';S.loginMsg='';renderLoginCard()">← Change Email</button></div>
+    `:`
+      <div class="form-field"><label>Admin Email</label><input id="re" type="email" value="${CFG.ADMIN_EMAIL}" /></div>
+      <button class="btn btn-primary btn-full" onclick="sendReset()">Send Reset Email</button>
+      <div style="text-align:center;margin-top:0.8rem"><button class="link-btn" onclick="S.loginStep='creds';S.loginMsg='';renderLoginCard()">← Back to Login</button></div>
+    `}`;
+  // Focus first OTP input
+  if (step==='otp') setTimeout(() => document.getElementById('o0')?.focus(), 100);
+}
+
+function otpNext(i) { if (document.getElementById('o'+i)?.value && i<3) document.getElementById('o'+(i+1))?.focus(); }
+function otpKey(e,i) { if (e.key==='Backspace' && !document.getElementById('o'+i)?.value && i>0) document.getElementById('o'+(i-1))?.focus(); }
+
+async function doLogin() {
+  const email = document.getElementById('ae')?.value;
+  const pass = document.getElementById('ap')?.value;
+  const btn = document.getElementById('login-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending OTP...'; }
+  const r = await api('sendOTP', { email, password: pass });
+  if (r.success) { S.loginStep='otp'; S.loginMsg=r.message; S.loginMsgType='green'; }
+  else { S.loginMsg=r.message; S.loginMsgType='red'; if(btn){btn.disabled=false;btn.textContent='Send OTP to Email →';} }
+  renderLoginCard();
+}
+
+async function verifyOTP() {
+  const otp = [0,1,2,3].map(i=>document.getElementById('o'+i)?.value||'').join('');
+  const r = await api('verifyOTP', { email: CFG.ADMIN_EMAIL, otp });
+  if (r.success) {
+    showOnly('admin-app');
+    document.getElementById('sb-mosque-name').textContent = CFG.MOSQUE_NAME;
+    await loadAdminData();
+    adminNav('overview');
+  } else { S.loginMsg=r.message; S.loginMsgType='red'; renderLoginCard(); }
+}
+
+async function resendOTP() {
+  await api('sendOTP', { email: CFG.ADMIN_EMAIL, password: CFG.ADMIN_PASSWORD });
+  S.loginMsg='OTP resent! Check your email.'; S.loginMsgType='green';
+  renderLoginCard();
+}
+
+async function sendReset() {
+  const email = document.getElementById('re')?.value;
+  const r = await api('sendReset', { email });
+  S.loginMsg=r.message; S.loginMsgType=r.success?'green':'red';
+  renderLoginCard();
+}
+
+// ── DONATION SUBMIT ──
+async function submitDonation() {
+  const name = document.getElementById('dname')?.value?.trim();
+  const phone = document.getElementById('dphone')?.value?.trim();
+  const amount = document.getElementById('damount')?.value;
+  if (!name||!phone||!amount||Number(amount)<=0) {
+    document.getElementById('form-msg').innerHTML = `<div class="alert alert-red">Please fill Name, Phone and Amount.</div>`;
+    return;
+  }
+  const btn = document.getElementById('submit-btn');
+  if (btn) { btn.disabled=true; btn.textContent='Saving...'; }
+  const r = await api('submitDonation', {
+    name, phone,
+    email: document.getElementById('demail')?.value||'',
+    cnic: document.getElementById('dcnic')?.value||'',
+    amount: Number(amount),
+    category: document.getElementById('dcat')?.value,
+    payment: document.getElementById('dpay')?.value,
+    message: document.getElementById('dmsg')?.value||''
+  });
+  if (r.success) {
+    S.lastReceipt = { id: r.id, name, amount: Number(amount), category: document.getElementById('dcat')?.value, payment: document.getElementById('dpay')?.value, date: r.date, message: document.getElementById('dmsg')?.value||'' };
+    await loadStats();
+    donorNav('receipt');
+    toast('✅ Donation submitted! JazakAllah Khair 🤲');
+  } else {
+    document.getElementById('form-msg').innerHTML = `<div class="alert alert-red">${r.message}</div>`;
+    if (btn) { btn.disabled=false; btn.textContent='🤲 Submit Donation — JazakAllah'; }
+  }
+}
+
+// ── DATA LOADERS ──
+async function loadStats() {
+  const r = await api('getStats');
+  if (r.success) S.stats = { total: r.total||0, count: r.count||0, categories: r.categories||{}, targetAmount: r.targetAmount||demoSettings.targetAmount, currency: r.currency||demoSettings.currency };
+}
+
+async function loadAdminData() {
+  S.loading = true;
+  const [dr, sr] = await Promise.all([api('getDonations'), api('getStats')]);
+  S.loading = false;
+  if (dr.success) S.donations = dr.donations||[];
+  if (sr.success) S.stats = { total: sr.total||0, count: sr.count||0, categories: sr.categories||{}, targetAmount: sr.targetAmount||demoSettings.targetAmount, currency: sr.currency||demoSettings.currency };
+  // Update badge
+  const badge = document.getElementById('don-badge');
+  if (badge && S.donations.length>0) { badge.style.display='block'; badge.textContent=S.donations.length>99?'99+':S.donations.length; }
+  renderAdminPage();
+}
+
+// ── ADMIN ACTIONS ──
+async function deleteDonation(id) {
+  if (!confirm('Delete this donation record?')) return;
+  await api('deleteDonation', { id });
+  toast('Record deleted');
+  await loadAdminData();
+}
+
+async function clearAll() {
+  if (!confirm('DELETE ALL RECORDS? This cannot be undone!')) return;
+  if (!confirm('Final confirmation — all data will be permanently lost.')) return;
+  for (const d of S.donations) await api('deleteDonation', { id: d.id });
+  demoRows=[]; saveDemoData();
+  toast('All records cleared');
+  await loadAdminData();
+}
+
+async function saveSettings() {
+  const ta = Number(document.getElementById('set-target')?.value)||500000;
+  const cu = document.getElementById('set-curr')?.value||'PKR';
+  await api('updateSettings', { targetAmount: ta, currency: cu });
+  toast('✅ Settings saved');
+  await loadAdminData();
+}
+
+function saveGoogleSettings() {
+  const url = document.getElementById('set-url')?.value;
+  const email = document.getElementById('set-email')?.value;
+  if (url) { CFG.GOOGLE_SCRIPT_URL = url; CFG.DEMO_MODE = false; }
+  if (email) CFG.ADMIN_EMAIL = email;
+  toast('✅ Google Sheets connected! Reload to apply.');
+}
+
+// ── EXPORT ──
+function exportExcel() {
+  if (!window.XLSX) { toast('Excel library loading...'); return; }
+  const rows = S.donations.map(d=>({ 'Receipt ID':d.id, Name:d.name, Phone:d.phone, Email:d.email, CNIC:d.cnic, Amount:d.amount, Category:d.category, Payment:d.payment, Message:d.message, Date:d.date }));
+  if (rows.length===0) { toast('No data to export'); return; }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Donations');
+  XLSX.writeFile(wb, `${CFG.MOSQUE_NAME}_Donations_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('📊 Excel file downloaded');
+}
+
+function exportCSV() {
+  const h = ['Receipt ID','Name','Phone','Email','CNIC','Amount','Category','Payment','Message','Date'];
+  const rows = S.donations.map(d=>[d.id,d.name,d.phone,d.email,d.cnic,d.amount,d.category,d.payment,d.message,d.date].map(v=>`"${v||''}"`).join(','));
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent([h.join(','),...rows].join('\n'));
+  a.download = `${CFG.MOSQUE_NAME}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('📋 CSV file downloaded');
+}
+
+function printAll() {
+  const st = S.stats;
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>${CFG.MOSQUE_NAME} Report</title>
+  <style>body{font-family:Arial,sans-serif;padding:24px;max-width:900px;margin:0 auto}h1{color:#1B4332}table{width:100%;border-collapse:collapse;margin-top:16px}th{background:#1B4332;color:#fff;padding:8px 10px;text-align:left;font-size:12px}td{padding:7px 10px;border-bottom:1px solid #eee;font-size:13px}tfoot td{font-weight:700;background:#EEF4F1}@media print{.noprint{display:none}}</style></head>
+  <body><h1>🕌 ${CFG.MOSQUE_NAME}</h1>
+  <p>Donation Report · ${today()} · Total: ${fmt(st.total)} ${st.currency} · Donors: ${st.count}</p>
+  <button class="noprint" onclick="window.print()" style="padding:8px 20px;background:#1B4332;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-bottom:16px">🖨 Print</button>
+  <table><thead><tr><th>Receipt ID</th><th>Name</th><th>Phone</th><th>Amount (${st.currency})</th><th>Category</th><th>Payment</th><th>Date</th></tr></thead>
+  <tbody>${S.donations.map(d=>`<tr><td style="font-family:monospace;font-size:11px">${d.id}</td><td>${d.name}</td><td>${d.phone}</td><td>${fmt(d.amount)}</td><td>${d.category}</td><td>${d.payment}</td><td>${d.date}</td></tr>`).join('')}</tbody>
+  <tfoot><tr><td colspan="3">TOTAL</td><td>${fmt(st.total)} ${st.currency}</td><td colspan="3">${st.count} donations</td></tr></tfoot>
+  </table></body></html>`);
+  w.document.close();
+}
+
+function printReceipt() {
+  const rec = S.lastReceipt;
+  const st = S.stats;
+  if (!rec) return;
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>Receipt</title>
+  <style>body{font-family:Arial,sans-serif;max-width:360px;margin:40px auto;padding:24px;border:2px dashed #2D6A4F}h2,h3{text-align:center;color:#1B4332}table{width:100%;margin-top:16px}td{padding:7px 0;font-size:13px}td:last-child{text-align:right;font-weight:700}.foot{text-align:center;color:#666;font-size:12px;margin-top:20px}</style></head>
+  <body><h2>🕌 ${CFG.MOSQUE_NAME}</h2><h3>Donation Receipt</h3>
+  <table><tr><td>Receipt ID</td><td style="font-family:monospace;font-size:11px">${rec.id}</td></tr><tr><td>Name</td><td>${rec.name}</td></tr><tr><td>Amount</td><td>${fmt(rec.amount)} ${st.currency}</td></tr><tr><td>Category</td><td>${rec.category}</td></tr><tr><td>Payment</td><td>${rec.payment}</td></tr><tr><td>Date</td><td>${rec.date}</td></tr>${rec.message?`<tr><td>Message</td><td>${rec.message}</td></tr>`:''}</table>
+  <div class="foot"><p>JazakAllah Khair 🤲</p><p>May Allah accept your donation.</p></div></body></html>`);
+  w.document.close();
+  w.print();
+}
+
+// ── INIT ──
+document.getElementById('demoNote').textContent = CFG.DEMO_MODE ? `Demo Mode · Admin: ${CFG.ADMIN_EMAIL} · Pass: ${CFG.ADMIN_PASSWORD} · OTP: ${DEMO_OTP}` : '';
+
+// Preload stats for the progress display on splash
+loadStats();
+</script>
+</body>
+</html>
